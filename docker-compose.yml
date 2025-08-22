@@ -1,0 +1,14 @@
+services:
+  open-gateway:
+    image: open-gateway:local
+    build: .
+    container_name: open-gateway
+    restart: unless-stopped
+    ports:
+      - 5000:5000
+    networks:
+      - nginx
+
+networks:
+  nginx:
+    external: true

@@ -51,6 +51,7 @@ async def forward_chat_completion(
         try:
             incoming_body: Dict[str, Any] = await request.json()
         except Exception as e:
+            logger.error(f"Invalid request body: {type(e).__name__}: {str(e)}")
             raise HTTPException(
                 status_code=400, detail=f"Invalid request body: {str(e)}"
             )
@@ -117,8 +118,8 @@ async def forward_chat_completion(
                     stream_generator(), media_type="text/event-stream"
                 )
             except Exception as e:
-                logger.error(f"Error in streaming request: {e}")
-                raise HTTPException(status_code=500, detail="Streaming error")
+                logger.error(f"Streaming error: {type(e).__name__}: {str(e)}")
+                raise HTTPException(status_code=500, detail=f"Streaming error: {str(e)}")
         else:
             try:
                 response: httpx.Response = await client.post(
@@ -127,14 +128,14 @@ async def forward_chat_completion(
                 response.raise_for_status()
                 return response.json()
             except Exception as e:
-                logger.error(f"Error in non-streaming request: {e}")
-                raise
+                logger.error(f"Non-streaming error: {type(e).__name__}: {str(e)}")
+                raise HTTPException(status_code=500, detail=f"Non-streaming error: {str(e)}")
     except httpx.HTTPStatusError as e:
-        logger.error(f"Error from provider: {str(e)}")
-        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+        logger.error(f"Provider error: {e.response.status_code} - {e.response.text}")
+        raise HTTPException(status_code=e.response.status_code, detail=f"Provider error: {e.response.text}")
     except Exception as e:
-        logger.error(f"Error forwarding request: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Internal error: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/models")
@@ -150,12 +151,4 @@ async def list_models():
 @app.post("/chat/completions")
 async def chat_completions(request: Request):
     logger.info("Incoming request /chat/completions")
-    try:
-        return await forward_chat_completion(
-            request=request,
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error in chat completions: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    return await forward_chat_completion(request=request)

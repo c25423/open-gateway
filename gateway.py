@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 import logging
 from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
@@ -10,7 +11,20 @@ import yaml
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+# Global HTTP client instance
+client: Optional[httpx.AsyncClient] = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: create the HTTP client
+    global client
+    client = httpx.AsyncClient()
+    yield
+    # Shutdown: close the HTTP client
+    if client:
+        await client.aclose()
+
+app = FastAPI(lifespan=lifespan)
 config_path = Path("config.yaml")
 if not config_path.exists():
     raise FileNotFoundError("config.yaml not found")
@@ -84,8 +98,7 @@ async def forward_chat_completion(
             "model": model_config["identifier"],
         }
 
-        # Send outgoing request
-        client = httpx.AsyncClient()
+        # Send outgoing request using shared client
         stream: bool = incoming_body.get("stream", False)
         logger.info(
             f"Forwarding request to url: {url}, model: {model_config['identifier']}, stream: {stream}"
@@ -98,15 +111,13 @@ async def forward_chat_completion(
                     response.raise_for_status()
                     async for chunk in response.aiter_bytes():
                         yield chunk
-                await client.aclose()
 
             try:
                 return StreamingResponse(
                     stream_generator(), media_type="text/event-stream"
                 )
             except Exception as e:
-                logger.error(f"Error streaming: {e}")
-                await client.aclose()
+                logger.error(f"Error in streaming request: {e}")
                 raise HTTPException(status_code=500, detail="Streaming error")
         else:
             try:
@@ -115,8 +126,9 @@ async def forward_chat_completion(
                 )
                 response.raise_for_status()
                 return response.json()
-            finally:
-                await client.aclose()
+            except Exception as e:
+                logger.error(f"Error in non-streaming request: {e}")
+                raise
     except httpx.HTTPStatusError as e:
         logger.error(f"Error from provider: {str(e)}")
         raise HTTPException(status_code=e.response.status_code, detail=str(e))

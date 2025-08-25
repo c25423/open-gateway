@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 # Global HTTP client instance
 client: Optional[httpx.AsyncClient] = None
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: create the HTTP client
@@ -23,6 +24,7 @@ async def lifespan(app: FastAPI):
     # Shutdown: close the HTTP client
     if client:
         await client.aclose()
+
 
 app = FastAPI(lifespan=lifespan)
 config_path = Path("config.yaml")
@@ -105,6 +107,7 @@ async def forward_chat_completion(
             f"Forwarding request to url: {url}, model: {model_config['identifier']}, stream: {stream}"
         )
         if stream:
+
             async def stream_generator() -> AsyncGenerator[bytes, None]:
                 async with client.stream(
                     "POST", url, headers=headers, json=body, timeout=60.0
@@ -119,7 +122,9 @@ async def forward_chat_completion(
                 )
             except Exception as e:
                 logger.error(f"Streaming error: {type(e).__name__}: {str(e)}")
-                raise HTTPException(status_code=500, detail=f"Streaming error: {str(e)}")
+                raise HTTPException(
+                    status_code=500, detail=f"Streaming error: {str(e)}"
+                )
         else:
             try:
                 response: httpx.Response = await client.post(
@@ -129,10 +134,15 @@ async def forward_chat_completion(
                 return response.json()
             except Exception as e:
                 logger.error(f"Non-streaming error: {type(e).__name__}: {str(e)}")
-                raise HTTPException(status_code=500, detail=f"Non-streaming error: {str(e)}")
+                raise HTTPException(
+                    status_code=500, detail=f"Non-streaming error: {str(e)}"
+                )
     except httpx.HTTPStatusError as e:
         logger.error(f"Provider error: {e.response.status_code} - {e.response.text}")
-        raise HTTPException(status_code=e.response.status_code, detail=f"Provider error: {e.response.text}")
+        raise HTTPException(
+            status_code=e.response.status_code,
+            detail=f"Provider error: {e.response.text}",
+        )
     except Exception as e:
         logger.error(f"Internal error: {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")

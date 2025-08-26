@@ -5,7 +5,7 @@ from typing import Any, Dict
 import yaml
 
 
-def load_config():
+def load_config() -> Dict[str, Any]:
     """Load configuration from config.yaml"""
     config_path = Path("config.yaml")
     if not config_path.exists():

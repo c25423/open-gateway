@@ -5,7 +5,6 @@ from fastapi import Request, HTTPException
 from fastapi.responses import StreamingResponse
 import httpx
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

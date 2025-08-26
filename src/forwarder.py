@@ -1,41 +1,18 @@
-from contextlib import asynccontextmanager
 import logging
-from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import Request, HTTPException
 from fastapi.responses import StreamingResponse
 import httpx
-import yaml
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Global HTTP client instance
-client: Optional[httpx.AsyncClient] = None
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup: create the HTTP client
-    global client
-    client = httpx.AsyncClient()
-    yield
-    # Shutdown: close the HTTP client
-    if client:
-        await client.aclose()
-
-
-app = FastAPI(lifespan=lifespan)
-config_path = Path("config.yaml")
-if not config_path.exists():
-    raise FileNotFoundError("config.yaml not found")
-with open(config_path) as f:
-    config: Dict[str, Any] = yaml.safe_load(f)
-
 
 async def forward_chat_completion(
     request: Request,
+    config: Dict[str, Any],
+    client: httpx.AsyncClient
 ) -> Union[StreamingResponse, Dict[str, Any]]:
     try:
         # Get incoming headers and body
@@ -146,19 +123,3 @@ async def forward_chat_completion(
     except Exception as e:
         logger.error(f"Internal error: {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
-
-
-@app.get("/models")
-async def list_models():
-    logger.info("Incoming request /models")
-    models = []
-    for provider_name, models_dict in config["oai"]["model"].items():
-        for model_name in models_dict.keys():
-            models.append(f"{provider_name}:{model_name}")
-    return {"data": [{"id": model} for model in models], "object": "list"}
-
-
-@app.post("/chat/completions")
-async def chat_completions(request: Request):
-    logger.info("Incoming request /chat/completions")
-    return await forward_chat_completion(request=request)

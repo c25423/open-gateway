@@ -11,7 +11,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code and configuration files
-COPY gateway.py ./
+COPY src/ ./src/
 COPY config.yaml ./
 
 # Set default PORT environment variable
@@ -19,4 +19,4 @@ ENV HOST=0.0.0.0
 ENV PORT=5000
 
 # Set the command to run the gateway
-CMD ["sh", "-c", "uvicorn gateway:app --host $HOST --port $PORT"]
+CMD ["sh", "-c", "uvicorn src.server:app --host $HOST --port $PORT"]

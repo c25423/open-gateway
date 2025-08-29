@@ -5,11 +5,11 @@ from typing import Any, Dict
 import yaml
 
 
-def load_config() -> Dict[str, Any]:
-    """Load configuration from config.yaml"""
-    config_path = Path("config.yaml")
-    if not config_path.exists():
-        raise FileNotFoundError("config.yaml not found")
-    with open(config_path) as f:
+def load_config(config_path: str) -> Dict[str, Any]:
+    """Load configuration from the specified YAML file"""
+    path = Path(config_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Config file not found: {config_path}")
+    with open(path) as f:
         config: Dict[str, Any] = yaml.safe_load(f)
     return config

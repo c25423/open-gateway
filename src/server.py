@@ -1,4 +1,6 @@
+import argparse
 import logging
+import os
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -20,8 +22,42 @@ client: Optional[httpx.AsyncClient] = None
 # Load env
 load_dotenv()
 
-# Load configuration
-config = load_config()
+# Parse arguments before loading config
+# Set up argument parser
+parser = argparse.ArgumentParser(description="Run the Open Gateway API server")
+# Add arguments with environment variable defaults
+parser.add_argument(
+    "--host",
+    default=os.getenv("HOST", "0.0.0.0"),
+    help="Host to bind to (default: HOST env var or 0.0.0.0)",
+)
+parser.add_argument(
+    "--port",
+    type=int,
+    default=int(os.getenv("PORT", "4283")),
+    help="Port to bind to (default: PORT env var or 4283)",
+)
+parser.add_argument(
+    "--reload",
+    action="store_true",
+    default=os.getenv("RELOAD", "false").lower() == "true",
+    help="Enable auto-reload (default: RELOAD env var or false)",
+)
+parser.add_argument(
+    "--log-level",
+    default=os.getenv("LOG_LEVEL", "info"),
+    choices=["debug", "info", "warning", "error", "critical"],
+    help="Log level (default: LOG_LEVEL env var or info)",
+)
+parser.add_argument(
+    "--config-path",
+    default="./config.yaml",
+    help="Path to the configuration file (default: ./config.yaml)",
+)
+args = parser.parse_args()
+
+# Load configuration with the specified path
+config = load_config(args.config_path)
 
 # Create the auth dependency with config
 auth_dependency = validate_token_dependency(config)
@@ -64,39 +100,7 @@ async def chat_completions(
 
 
 def main():
-    import argparse
-    import os
     import uvicorn
-
-    # Set up argument parser
-    parser = argparse.ArgumentParser(description="Run the Open Gateway API server")
-
-    # Add arguments with environment variable defaults
-    parser.add_argument(
-        "--host",
-        default=os.getenv("HOST", "0.0.0.0"),
-        help="Host to bind to (default: HOST env var or 0.0.0.0)",
-    )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=int(os.getenv("PORT", "4283")),
-        help="Port to bind to (default: PORT env var or 4283)",
-    )
-    parser.add_argument(
-        "--reload",
-        action="store_true",
-        default=os.getenv("RELOAD", "false").lower() == "true",
-        help="Enable auto-reload (default: RELOAD env var or false)",
-    )
-    parser.add_argument(
-        "--log-level",
-        default=os.getenv("LOG_LEVEL", "info"),
-        choices=["debug", "info", "warning", "error", "critical"],
-        help="Log level (default: LOG_LEVEL env var or info)",
-    )
-
-    args = parser.parse_args()
 
     logger.info(f"HOST: {args.host}")
     logger.info(f"PORT: {args.port}")

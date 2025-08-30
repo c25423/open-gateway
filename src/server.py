@@ -54,6 +54,11 @@ parser.add_argument(
     default="./config.yaml",
     help="Path to the configuration file (default: ./config.yaml)",
 )
+parser.add_argument(
+    "--socks5-proxy",
+    default=os.getenv("SOCKS5_PROXY", None),
+    help="URL to socks5 proxy (default: None)",
+)
 args = parser.parse_args()
 
 # Load configuration with the specified path
@@ -67,7 +72,8 @@ auth_dependency = validate_token_dependency(config)
 async def lifespan(app: FastAPI):
     # Startup: create the HTTP client
     global client
-    client = httpx.AsyncClient()
+    logger.info(f"Starting httpx client with proxy {args.socks5_proxy}")
+    client = httpx.AsyncClient(proxy=args.socks5_proxy)
     yield
     # Shutdown: close the HTTP client
     if client:

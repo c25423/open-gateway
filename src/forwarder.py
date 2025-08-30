@@ -14,14 +14,18 @@ async def forward_chat_completion(
     client: httpx.AsyncClient
 ) -> Union[StreamingResponse, Dict[str, Any]]:
     try:
+        logger.info(f"Incoming request URL: {str(request.url)}")
+
         # Get incoming headers and body
         incoming_headers: Dict[str, str] = dict(request.headers)
+        logger.info(f"Incoming request headers: {incoming_headers}")
         exclude_headers: List[str] = [
+            "accept",
+            "accept-encoding",
+            "authorization",
             "host",
             "content-length",
-            "authorization",
             "content-type",
-            "accept",
         ]
         for key in exclude_headers:
             if key in incoming_headers:
@@ -33,6 +37,7 @@ async def forward_chat_completion(
             raise HTTPException(
                 status_code=400, detail=f"Invalid request body: {str(e)}"
             )
+        logger.info(f"Incoming request body: {incoming_body}")
 
         # Get provider config and model config
         model: str = incoming_body.get("model", "")
@@ -67,9 +72,11 @@ async def forward_chat_completion(
         base_url: str = provider_config["base_url"].rstrip("/")
         url: str = f"{base_url}/chat/completions"
         headers: Dict[str, str] = {
-            "Authorization": f"Bearer {provider_config['api_key']}",
             **model_config.get("extra_headers", {}),
             **incoming_headers,
+            "accept": "*/*",
+            "authorization": f"Bearer {provider_config['api_key']}",
+            "content-type": "application/json"
         }
         body: Dict[str, Any] = {
             **model_config.get("extra_body", {}),
@@ -90,6 +97,7 @@ async def forward_chat_completion(
                 ) as response:
                     response.raise_for_status()
                     async for chunk in response.aiter_bytes():
+                        # logger.info(f"Reveived from url: {url}, model: {model_config['identifier']}: {chunk}")
                         yield chunk
 
             try:

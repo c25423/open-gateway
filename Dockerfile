@@ -1,17 +1,25 @@
-# Use official Python 3.12 slim image based on Debian Bookworm
-FROM python:3.12-alpine
+# Build stage
 
-# Set working directory
-WORKDIR /app
+FROM --platform=$BUILDPLATFORM golang:alpine AS builder
 
-# Copy requirements first to leverage Docker cache
-COPY requirements.txt .
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+ARG TARGETOS
+ARG TARGETARCH
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+WORKDIR /go/src/open-gateway
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -a -installsuffix cgo -o /go/bin/open-gateway ./cmd/server
 
-# Copy application code and configuration files
-COPY src/ ./src/
+# Final stage
 
-# Set the command to run the gateway
-CMD ["python", "src/server.py"]
+FROM alpine:latest
+
+RUN mkdir -p /etc/open-gateway /var/lib/open-gateway
+RUN apk --no-cache add ca-certificates
+COPY --from=builder /go/bin/open-gateway /usr/local/bin/open-gateway
+
+CMD ["/usr/local/bin/open-gateway"]

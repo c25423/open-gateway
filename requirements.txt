@@ -1,4 +1,0 @@
-fastapi[standard]
-httpx[socks]
-python-dotenv
-pyyaml

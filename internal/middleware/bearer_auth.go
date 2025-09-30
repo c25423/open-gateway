@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 	"strings"
 
@@ -8,17 +9,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var tokenMap map[string]bool
+
 func BearerAuthMiddleware() gin.HandlerFunc {
 	// Load tokens
 	tokens, err := config.GetTokens()
 	if err != nil {
 		tokens = []string{}
 	}
+
 	// Convert tokens to a map for faster lookups
-	tokenMap := make(map[string]bool)
+	tokenMap = make(map[string]bool)
 	for _, token := range tokens {
 		tokenMap[token] = true
 	}
+
+	log.Println("Prebuilt token maps")
 
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")

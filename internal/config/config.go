@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"sort"
 	"strconv"
@@ -49,6 +50,8 @@ func Load(configFilePath string) error {
 		// If the YAML structure is incorrect
 		return fmt.Errorf("failed to parse YAML content from '%s': %w", configFilePath, err)
 	}
+
+	log.Println("Loaded config")
 
 	return nil
 }

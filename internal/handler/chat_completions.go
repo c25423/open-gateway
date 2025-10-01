@@ -88,8 +88,9 @@ func transformRequest(incomingHeaders http.Header, incomingBody io.Reader) (*htt
 	for k, v := range oaiModelConfig.ExtraHeaders {
 		req.Header.Set(k, v)
 	}
-	// Overwrite headers <- "Accept", "Authorization", and "Content-Type"
+	// Overwrite headers <- "Accept", "Accept-Encoding", "Authorization", and "Content-Type"
 	req.Header.Set("Accept", "*/*")
+	req.Header.Del("Accept-Encoding") // Remove to avoid compression compatibility issues
 	req.Header.Set("Authorization", "Bearer "+string(oaiProviderConfig.ApiKey))
 	req.Header.Set("Content-Type", "application/json")
 
